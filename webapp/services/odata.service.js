@@ -8,13 +8,13 @@ sap.ui.define([
 
     return UIObject.extend("anibal.ma.fdesigner.service.ServiceOData", {
 
-        constructor: function (sName) {
-            this.initializeModel(sName);
+        constructor: function (oModel) {
+            this.initializeModel(oModel);
         },
 
-        initializeModel: function (sName = "") {
+        initializeModel: function (oModel) {
 
-            this.oDataModel = sap.ui.getCore().getModel(sName);
+            this.oDataModel = oModel
                 
             if (!this.oDataModel) {
                 this.oDataModel = sap.ui.getCore().getModel("mainService");
@@ -80,13 +80,11 @@ sap.ui.define([
                 try {
                     this.oDataModel.create(`/${entitySet}`, payload, {
                         success: function (oData, oResponse) {
-                            resolve({
-                                data: oData,
-                                response: oResponse
-                            });
+                            resolve({oData, oResponse});
                         },
-                        error: function (oError) {
-                            reject(this._formatError(oError));
+                        error: function (oError, oResponse) {
+                            reject({oError, oResponse, oErrorDetailed: this._formatError(oError)});
+                            // reject(this._formatError(oError));
                         }.bind(this),
                         urlParameters: params.urlParameters,
                         headers: params.headers
@@ -100,7 +98,7 @@ sap.ui.define([
         update: function (entitySet, key, payload, params = {}) {
             return new Promise((resolve, reject) => {
                 try {
-                    this.oDataModel.update(`/${entitySet}(${key})`, payload, {
+                    this.oDataModel.update(`/${entitySet}('${key}')`, payload, {
                         success: function (oData, oResponse) {
                             resolve({
                                 data: oData,
@@ -122,7 +120,7 @@ sap.ui.define([
         delete: function (entitySet, key, params = {}) {
             return new Promise((resolve, reject) => {
                 try {
-                    this.oDataModel.remove(`/${entitySet}(${key})`, {
+                    this.oDataModel.remove(`/${entitySet}('${key}')`, {
                         success: function (oData, oResponse) {
                             resolve({
                                 response: oResponse

@@ -12,6 +12,7 @@
         title="{i18n>title}"
     >
         <content>
+        <MessageStrip class="sapUiSmallMargin" showIcon="true" type="Information" text="El archivo a cargar debe cumplir con la plantilla indicada. No se está considerando parámetros, solo los campos de la plantilla."></MessageStrip>
             <FlexBox
                 width="100%"
                 class="sapUiSmallMarginTop"
@@ -127,6 +128,7 @@
                                                     id="_IDGenButton"
                                                     text="Procesar"
                                                     press="onPressProcesar"
+                                                    busyIndicatorDelay="0"
                                                     width="100%"
                                                 >
                                                     <layoutData>
@@ -165,7 +167,13 @@
                                 </Column>
                             </columns>
                             <items>
-                                <ColumnListItem>
+                                <ColumnListItem highlight="{
+                                    parts: [
+                                        'oProcessResult>statusTitle',
+                                        'oProcessResult>statusTM'
+                                    ],
+                                    formatter: '.formatter.formatHighlight'
+                                }">
                                     <cells>
                                         <Text text="{oProcessResult>id}" />
                                         <Text text="{oProcessResult>name}" />

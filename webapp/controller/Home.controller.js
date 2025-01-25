@@ -1,11 +1,10 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "../model/map",
-    "../services/s4hana.service"
-], (Controller, Map, S4HService) => {
+    "../services/s4hana.service",
+    "../model/formatter"
+], (Controller, Map, S4HService, formatter) => {
     "use strict";
-    let oModel;
-    let oModelTransport;
     const oHTTPCodes = {
         OK: 200,
         CREATED: 201,
@@ -18,9 +17,8 @@ sap.ui.define([
         INTERNAL_SERVER_ERROR: 500
     };
     return Controller.extend("anibal.ma.fdesigner.controller.Home", {
+        formatter: formatter,
         onInit() {
-            oModel = this.getOwnerComponent().getModel();
-            oModelTransport = this.getOwnerComponent().getModel("transport");
             this.fnListOTs();
             this.fnGetDefaultPackage();
         },
@@ -96,21 +94,31 @@ sap.ui.define([
                 return;
             }
 
-            let oDefaultWB = await S4HService.fnGetOT(true);
+            let oDefaultWB = await S4HService.fnGetOTs(true);
             let oDefaultPackage = await S4HService.fnGetPackage(true);
 
-            if (oDefaultWB.id != oKeyWB) {
-                await S4HService.fnPutOT({
-                    id: oDefaultWB.id,
-                    isDefaultRequest: true
-                });
+            if (!oDefaultWB || !oDefaultWB?.[0] || oDefaultWB[0].id != oKeyWB) {
+                try {
+                    await S4HService.fnPutOT({
+                        id: oKeyWB,
+                        isDefaultRequest: true
+                    });
+                } catch (oError) {
+                    sap.m.MessageBox.error(oError.message);
+                    return;
+                }
             }
 
-            if (oDefaultPackage.id != oKeyPackage) {
-                await S4HService.fnPutPackage({
-                    id: oDefaultPackage.id,
-                    isDefaultPackage: true
-                });
+            if (!oDefaultPackage || !oDefaultPackage?.[0] || oDefaultPackage[0].id != oKeyPackage) {
+                try {
+                    await S4HService.fnPutPackage({
+                        id: oKeyPackage,
+                        isDefaultPackage: true
+                    });
+                } catch (oError) {
+                    sap.m.MessageBox.error(oError.message);
+                    return;
+                }
             }
 
             let oData = await this.onLeerExcel();
@@ -119,6 +127,8 @@ sap.ui.define([
             if (!oData) {
                 return;
             }
+            
+            this.getView().byId("_IDGenButton").setBusy(true);
 
             oData.forEach((item) => {
                 aPromises.push(S4HService.fnPostTileTM(item.oBodyTile, item.oBodyTM));
@@ -133,13 +143,14 @@ sap.ui.define([
                     aFinalResult.push({
                         id: iRowIndex + 1,
                         name: JSON.parse(JSON.parse(oData[iRowIndex].oBodyTile.configuration).tileConfiguration).display_title_text + " / " + JSON.parse(JSON.parse(oData[iRowIndex].oBodyTM.configuration).tileConfiguration).transaction?.code,
-                        statusTitle: oRow.oResTitle.oResponse.statusCode === oHTTPCodes.CREATED ? `OK (${oRow.oResTitle.oResponse.statusCode} - ${oRow.oResTitle.oResponse.statusText})` : `Error (${oRow.oResTitle.oResponse.statusCode} - ${oRow.oResTitle.oResponse.statusText})`,
-                        statusTM: oRow.oResTM.oResponse.statusCode == oHTTPCodes.CREATED ? `OK (${oRow.oResTM.oResponse.statusCode} - ${oRow.oResTM.oResponse.statusText})` : `Error (${oRow.oResTM.oResponse.statusCode} - ${oRow.oResTM.oResponse.statusText})`
+                        statusTitle: parseInt(oRow.oResTitle.oResponse.statusCode) === oHTTPCodes.CREATED ? `OK (${oRow.oResTitle.oResponse.statusCode} - ${oRow.oResTitle.oResponse.statusText})` : `Error (${oRow.oResTitle.oResponse.statusCode} - ${oRow.oResTitle.oResponse.statusText})`,
+                        statusTM: parseInt(oRow.oResTM.oResponse.statusCode) === oHTTPCodes.CREATED ? `OK (${oRow.oResTM.oResponse.statusCode} - ${oRow.oResTM.oResponse.statusText})` : `Error (${oRow.oResTM.oResponse.statusCode} - ${oRow.oResTM.oResponse.statusText})`
                     });
                 });
 
                 this.getView().setModel(new sap.ui.model.json.JSONModel(aFinalResult), "oProcessResult");
                 sap.m.MessageToast.show("Proceso terminado");
+                this.getView().byId("_IDGenButton").setBusy(false);
             }, this);
         },
         fnListOTs: async function () {
@@ -150,9 +161,9 @@ sap.ui.define([
             };
             this.getView().setModel(new sap.ui.model.json.JSONModel(oDataSet), "OTWorkbenchs");
         },
-        fnGetDefaultPackage: function () {
-            let oData = S4HService.fnGetPackage(true);
-            this.getView().setModel(new sap.ui.model.json.JSONModel(oData?.results?.[0] || {}), "Package");
+        fnGetDefaultPackage: async function () {
+            let oData = await S4HService.fnGetPackage(true);
+            this.getView().setModel(new sap.ui.model.json.JSONModel(oData?.[0] || {}), "Package");
         }
     });
 });

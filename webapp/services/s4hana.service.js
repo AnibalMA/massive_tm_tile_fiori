@@ -1,10 +1,11 @@
 sap.ui.define([
+    "sap/ui/core/Component",
     "./odata.service"
-], function (ServiceOData) {
+], function (Component, ServiceOData) {
     "use strict";
-
-    const oDataService = new ServiceOData();
-    const oDataServiceTransport = new ServiceOData("transport");
+    const COMPONENT_ID = "application-anibalmafdesigner-display-component";
+    let oDataService = new ServiceOData(Component.get(COMPONENT_ID).getModel());
+    let oDataServiceTransport = new ServiceOData(Component.get(COMPONENT_ID).getModel("transport"));
 
     return {
         /** 
@@ -60,7 +61,7 @@ sap.ui.define([
          */
         fnPutPackage: function (oData = {}) {
             return new Promise((resolve, reject) => {
-                oDataServiceTransport.update(`Packages('${oData.id}')`, oData)
+                oDataServiceTransport.update(`Packages`, oData.id, oData)
                 .then(response => {
                     resolve(response.results?.[0] || {});
                 })
@@ -77,7 +78,7 @@ sap.ui.define([
          */
         fnPutOT: function (oData = {}) {
             return new Promise((resolve, reject) => {
-                oDataServiceTransport.update(`WorkbenchRequests('${oData.id}')`, oData)
+                oDataServiceTransport.update(`WorkbenchRequests`, oData.id, oData)
                 .then(response => {
                     resolve(response.results?.[0] || {});
                 })
@@ -97,27 +98,22 @@ sap.ui.define([
             return new Promise((resolve, reject) => {
                 let oResTitle;
 
-                oDataService.create("/PageChipInstances", oBodyTile, {
-                    success: function (oData, oResponse) {
-                        oResTitle = {oData, oResponse};
-                    },
-                    error: function (oErr, oResponse) {
-                        oResTitle = {oErr, oResponse};
-                    }
+                oDataService.create("PageChipInstances", oBodyTile).then((oData) => {
+                    oResTitle = oData
+                }).catch((oErr) => {
+                    oResTitle = oErr;
                 });
-                oDataService.create("/PageChipInstances", oBodyTM, {
-                    success: function (oData, oResponse) {
-                        resolve({
-                            oResTitle,
-                            oResTM: {oData, oResponse}
-                        });
-                    },
-                    error: function (oErr, oResponse) {
-                        resolve({
-                            oResTitle,
-                            oResTM: {oErr, oResponse}
-                        });
-                    }
+                
+                oDataService.create("PageChipInstances", oBodyTM).then( (oData) => {
+                    resolve({
+                        oResTitle,
+                        oResTM: oData
+                    });
+                }).catch((oErr) => {
+                    resolve({
+                        oResTitle,
+                        oResTM: oErr
+                    });
                 });
             });
         }
